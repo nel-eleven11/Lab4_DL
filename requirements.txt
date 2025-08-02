@@ -1,0 +1,10 @@
+numpy
+matplotlib
+scipy
+Pillow
+torch
+torchtext
+datasets
+spacy
+jupyterlab
+nltk
