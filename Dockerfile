@@ -11,24 +11,28 @@ RUN apt-get update && apt-get install -y \
     libxrender-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar Jupyter y dependencias de Python
+# Instalar Jupyter y dependencias de Python - SIN CUDA, CON Intel Extension
 RUN pip install --no-cache-dir \
     spacy \
     jupyter \
-    -U torch==1.9.0+cu111 -f https://download.pytorch.org/whl/cu111/torch_stable.html \
+    torch==2.1.0 \
     torchvision \
-    torchtext==0.10 \
+    torchtext \
+    intel-extension-for-pytorch \
     nltk \
     datasets \
     "numpy<2"
-     
 
 # Descargar modelos de spaCy
 RUN python -m spacy download en_core_web_sm && \
     python -m spacy download de_core_news_sm
 
-# Preparar NLTK (esto se puede hacer también en el notebook)
+# Preparar NLTK
 RUN python -m nltk.downloader stopwords
+
+# Variables de entorno para Intel GPU
+ENV SYCL_DEVICE_FILTER=gpu
+ENV LIBVA_DRIVER_NAME=iHD
 
 # Crear directorio para notebooks
 WORKDIR /workspace
@@ -37,5 +41,11 @@ VOLUME /workspace
 # Exponer el puerto del Jupyter
 EXPOSE 8888
 
-# Iniciar Jupyter Notebook
-CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=''", "--NotebookApp.password=''"]
+# Script de inicio con diagnósticos
+RUN echo '#!/bin/bash\n\
+echo "Intel GPU Check:"\n\
+python3 -c "import torch; print(f\"PyTorch: {torch.__version__}\"); import intel_extension_for_pytorch as ipex; print(f\"Intel Ext: {ipex.__version__}\"); print(f\"XPU available: {torch.xpu.is_available() if hasattr(torch, \"xpu\") else \"Not available\"}\")"\n\
+jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token=\"\" --NotebookApp.password=\"\"\n\
+' > /start.sh && chmod +x /start.sh
+
+CMD ["/start.sh"]

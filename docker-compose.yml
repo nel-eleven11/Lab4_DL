@@ -2,17 +2,28 @@ version: '1.0'
 
 services:
   AI:
-    image: torchserver
+    image: torchserver  # Your rebuilt image
     restart: always
     working_dir: /lab
     volumes:
       - ./:/lab
+      # Mount Intel GPU devices
+      - /dev/dri:/dev/dri
     ports:
       - "8888:8888"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    # Add Intel GPU group access
+    group_add:
+      - video
+      - render
+    # Set privileges for GPU access
+    privileged: false
+    # Map your specific Intel Iris Xe Graphics devices
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+      - /dev/dri/card1:/dev/dri/card1
+    environment:
+      # Intel GPU environment variables
+      - LIBVA_DRIVER_NAME=iHD
+      - INTEL_MEDIA_RUNTIME=igfx
+      # Optional: Set OpenCL platform
+      - OPENCL_VENDOR_PATH=/etc/OpenCL/vendors
